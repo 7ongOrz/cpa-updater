@@ -32,7 +32,7 @@ const usage = `用法: cpa-updater [目标 [版本]]
 
 func main() {
 	if err := run(os.Args[1:], os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "更新失败:", err)
+		fmt.Fprintln(os.Stderr, "操作失败:", err)
 		os.Exit(1)
 	}
 }
@@ -58,7 +58,7 @@ func run(args []string, input io.Reader, output io.Writer) error {
 	interactive := len(args) == 0
 	choice := ""
 	if interactive {
-		fmt.Fprintf(output, "CPA Updater %s (%s)\n1. 更新自维护 CPA\n2. 更新官方 CPA\n3. 更新 CPA Usage Keeper\n4. 更新 updater 自身\n0. 退出\n请选择: ", version, runtime.GOARCH)
+		fmt.Fprintf(output, "CPA Updater %s (%s)\n1. 更新自维护 CPA\n2. 更新官方 CPA\n3. 更新 CPA Usage Keeper\n4. 更新 updater 自身\n5. 恢复本地备份\n6. 删除本地备份\n0. 退出\n请选择: ", version, runtime.GOARCH)
 		if !scanner.Scan() {
 			return scanner.Err()
 		}
@@ -68,6 +68,9 @@ func run(args []string, input io.Reader, output io.Writer) error {
 	}
 	if choice == "0" {
 		return nil
+	}
+	if interactive && (choice == "5" || choice == "6") {
+		return backupMenu(choice == "6", scanner, output)
 	}
 	svc, err := selectService(choice)
 	if err != nil {
@@ -117,11 +120,8 @@ func run(args []string, input io.Reader, output io.Writer) error {
 			return nil
 		}
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	ctx, stop := installationContext()
 	defer stop()
-	// Keep a closed SSH output pipe from interrupting cleanup or installation.
-	signal.Ignore(syscall.SIGPIPE)
-	defer signal.Reset(syscall.SIGPIPE)
 	if err = update(ctx, svc, rel, wgetDownload, restartService); err != nil {
 		return err
 	}
@@ -131,4 +131,14 @@ func run(args []string, input io.Reader, output io.Writer) error {
 		fmt.Fprintln(output, "更新完成，服务已启动，临时文件已清理。")
 	}
 	return nil
+}
+
+func installationContext() (context.Context, func()) {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	// Keep a closed SSH output pipe from interrupting cleanup or installation.
+	signal.Ignore(syscall.SIGPIPE)
+	return ctx, func() {
+		stop()
+		signal.Reset(syscall.SIGPIPE)
+	}
 }

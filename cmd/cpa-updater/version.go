@@ -14,6 +14,10 @@ func installedVersion(svc service) string {
 	if svc.self {
 		return version
 	}
+	return executableVersion(svc, filepath.Join(svc.dir, svc.binary))
+}
+
+func executableVersion(svc service, path string) string {
 	args := []string{"--version"}
 	if svc.binary == "cli-proxy-api" {
 		// CPA prints its version before help. An empty config keeps plugin loading out of this query.
@@ -21,7 +25,7 @@ func installedVersion(svc service) string {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, filepath.Join(svc.dir, svc.binary), args...).Output()
+	out, err := exec.CommandContext(ctx, path, args...).Output()
 	if err != nil {
 		return "未知"
 	}

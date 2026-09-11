@@ -47,7 +47,7 @@ func selectService(choice string) (service, error) {
 		}
 		return service{binary: filepath.Base(path), repo: updaterRepo, dir: filepath.Dir(path), self: true}, nil
 	default:
-		return service{}, fmt.Errorf("请选择 1–4 或 0，或指定服务名称")
+		return service{}, fmt.Errorf("请选择菜单中的选项，或指定有效的更新目标名称")
 	}
 }
 

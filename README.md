@@ -66,6 +66,23 @@ Omitting the version selects latest stable. Numeric versions accept an optional
 `v` prefix. Personal CPA and updater self-update always select latest stable.
 Selecting the installed version performs a reinstall; the explicit choice is honored.
 
+Menu entries **5. Restore local backup** and **6. Delete local backup** manage
+the single `.previous` executable for CPA or Usage Keeper, without network access.
+Both show the current and backup versions, the backup path, and whether the backup
+is newer, older, the same version, or from the other CPA source before confirmation.
+Personal versions retain the full `-7ong.N` suffix; official versions have no suffix.
+Restoring restarts the service and saves the replaced executable as the new backup.
+If startup fails, the original executable is restored and restarted, while the
+original backup remains available. Deleting removes only the displayed backup and
+leaves the running service unchanged. Self-update has no persistent backup.
+
+Backup management holds the installation lock from preview through confirmation.
+Restoration uses the same `update-tmp` workspace as online updates and cleans it
+on completion. If filesystem errors prevent restoring the original executable,
+its recovery copy stays in the workspace at the path reported by the error;
+recover it before starting another update. These operations manage executables
+only; verify configuration and database compatibility before restoring a version.
+
 The server needs Linux amd64/arm64, GNU wget, systemctl, and an existing service
 installation. This tool updates executables; it does not install service units.
 Run updates while conversations are idle: restarting a service interrupts its
@@ -136,7 +153,7 @@ tests/                black-box CLI tests using a prebuilt executable
 
 GitHub Actions builds and tests this updater on native amd64 and arm64 runners.
 Unit tests cover package layout, version selection/comparison, checksums, locking,
-cleanup, service rollback, and self-update. CLI tests exercise the actual binary
+cleanup, service rollback, local backup restoration/deletion, and self-update. CLI tests exercise the actual binary
 with a test-only wget substitute, including real SIGINT/SIGTERM/SIGHUP cancellation,
 cleanup, and running-binary replacement. Actions also checks the actual release
 archive layout, executable permissions, and extracted bytes before running the
