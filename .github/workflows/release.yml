@@ -1,0 +1,76 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Linux ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.x'
+          cache: false
+      - name: Check formatting
+        run: test -z "$(gofmt -l cmd tests)"
+      - name: Unit tests
+        run: go test ./cmd/cpa-updater -count=1 -timeout=2m
+      - name: Build executable
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p dist
+          version="dev-${GITHUB_SHA:0:7}"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then version="$GITHUB_REF_NAME"; fi
+          go build -trimpath -ldflags="-s -w -X main.version=${version} -X main.updaterRepo=${GITHUB_REPOSITORY}" -o "dist/cpa-updater_linux_${GOARCH}" ./cmd/cpa-updater
+      - name: Command-line integration tests
+        env:
+          CPA_UPDATER_BINARY: ${{ github.workspace }}/dist/cpa-updater_linux_${{ matrix.arch }}
+        run: go test ./tests -count=1 -timeout=3m
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.arch }}
+          path: dist/*
+          retention-days: 7
+
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          merge-multiple: true
+          path: dist
+      - name: Publish verified binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd dist
+          sha256sum cpa-updater_linux_* > checksums.txt
+          gh release create "$GITHUB_REF_NAME" cpa-updater_linux_* checksums.txt --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
