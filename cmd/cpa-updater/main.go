@@ -58,7 +58,7 @@ func run(args []string, input io.Reader, output io.Writer) error {
 	interactive := len(args) == 0
 	choice := ""
 	if interactive {
-		fmt.Fprintf(output, "CPA Updater %s (%s)\n1. 更新自维护 CPA\n2. 更新官方 CPA\n3. 更新 CPA Usage Keeper\n4. 更新更新器自身\n0. 退出\n请选择: ", version, runtime.GOARCH)
+		fmt.Fprintf(output, "CPA Updater %s (%s)\n1. 更新自维护 CPA\n2. 更新官方 CPA\n3. 更新 CPA Usage Keeper\n4. 更新 updater 自身\n0. 退出\n请选择: ", version, runtime.GOARCH)
 		if !scanner.Scan() {
 			return scanner.Err()
 		}
