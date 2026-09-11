@@ -47,7 +47,7 @@ jobs:
         env:
           CPA_UPDATER_BINARY: ${{ github.workspace }}/dist/cpa-updater_linux_${{ matrix.arch }}
         run: go test ./tests -count=1 -timeout=3m
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: binary-${{ matrix.arch }}
           path: dist/*
@@ -61,7 +61,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: binary-*
           merge-multiple: true
