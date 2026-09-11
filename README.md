@@ -17,15 +17,19 @@ two services. Existing services must use the executable paths shown above.
 
 ## Use
 
-Download the binary matching the server CPU from Releases:
+Download the tar archive matching the server CPU from Releases:
 
-- `cpa-updater_linux_amd64`: x86-64 / amd64.
-- `cpa-updater_linux_arm64`: ARM64 / aarch64.
+- `cpa-updater_linux_amd64.tar.gz`: x86-64 / amd64.
+- `cpa-updater_linux_arm64.tar.gz`: ARM64 / aarch64.
 
-Rename it to `cpa-updater` and keep it in a directory of your choice:
+Both archives contain just `cpa-updater` at the archive root, with executable
+permissions. Extract into a directory of your choice; renaming is unnecessary.
+For an x86-64 server:
 
 ```sh
-chmod +x cpa-updater
+wget --no-hsts https://github.com/7ongOrz/cpa-updater/releases/latest/download/cpa-updater_linux_amd64.tar.gz
+tar -zxvf cpa-updater_linux_amd64.tar.gz
+rm cpa-updater_linux_amd64.tar.gz
 ./cpa-updater
 ```
 
@@ -107,10 +111,13 @@ application health. An interrupted installation can leave the new executable
 installed while the previous process is still running; inspect the service
 before manually restarting it.
 
-Self-update downloads a checksummed raw executable and atomically replaces the
+Self-update verifies the archive checksum, extracts `cpa-updater`, and atomically replaces the
 running updater, even when launched through a symlink or from a different working
 directory. The new version runs on the next invocation. It leaves one executable
 and calls no systemd service. Self-update creates no persistent backup.
+
+The initial raw-binary v0.1.0 distribution requires one manual archive installation
+to switch to this format. Subsequent self-updates use tar archives automatically.
 
 Filesystem sync improves crash durability, but hardware and filesystem failures
 still require manual recovery. A persistent SSH connection is not required for
@@ -131,11 +138,13 @@ GitHub Actions builds and tests this updater on native amd64 and arm64 runners.
 Unit tests cover package layout, version selection/comparison, checksums, locking,
 cleanup, service rollback, and self-update. CLI tests exercise the actual binary
 with a test-only wget substitute, including real SIGINT/SIGTERM/SIGHUP cancellation,
-cleanup, and running-binary replacement. Tests operate in temporary directories
+cleanup, and running-binary replacement. Actions also checks the actual release
+archive layout, executable permissions, and extracted bytes before running the
+CLI tests against the extracted executable. Tests operate in temporary directories
 and use mocked service control. They never restart deployed services.
 
 Pushes to `main` and pull requests run CI and upload artifacts retained for seven
-days. A `v*` tag publishes both tested binaries and a combined `checksums.txt`.
+days. A `v*` tag publishes both tested tar archives and a combined `checksums.txt`.
 The repository used for self-update is injected from `GITHUB_REPOSITORY` at build
 time. Manual dispatch produces development artifacts, with no release on a branch.
 

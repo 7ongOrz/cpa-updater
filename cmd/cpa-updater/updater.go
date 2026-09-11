@@ -74,7 +74,7 @@ func (r release) assetURL(name string) (string, error) {
 
 func (s service) archive(tag, arch string) (name, member string) {
 	if s.self {
-		return "cpa-updater_linux_" + arch, ""
+		return "cpa-updater_linux_" + arch + ".tar.gz", "cpa-updater"
 	}
 	if s.binary == "cli-proxy-api" {
 		if arch == "arm64" {
@@ -155,19 +155,8 @@ func update(ctx context.Context, svc service, rel release, download downloadFunc
 		return err
 	}
 	staged := filepath.Join(work, svc.binary)
-	if svc.self {
-		staged = archive
-		f, openErr := os.OpenFile(staged, os.O_RDWR, 0)
-		if openErr != nil {
-			return openErr
-		}
-		if err = errors.Join(f.Chmod(0755), f.Sync(), f.Close()); err != nil {
-			return err
-		}
-	} else {
-		if err = extractBinary(archive, member, staged); err != nil {
-			return err
-		}
+	if err = extractBinary(archive, member, staged); err != nil {
+		return err
 	}
 	if err = ctx.Err(); err != nil {
 		return err

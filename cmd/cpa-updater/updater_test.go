@@ -102,8 +102,8 @@ func TestArchiveLayout(t *testing.T) {
 		{"2", "arm64", "CLIProxyAPI_7.2.158-7ong.1_linux_aarch64.tar.gz", "cli-proxy-api"},
 		{"3", "amd64", "cpa-usage-keeper_v7.2.158-7ong.1_linux_amd64.tar.gz", "cpa-usage-keeper_v7.2.158-7ong.1_linux_amd64/cpa-usage-keeper"},
 		{"3", "arm64", "cpa-usage-keeper_v7.2.158-7ong.1_linux_arm64.tar.gz", "cpa-usage-keeper_v7.2.158-7ong.1_linux_arm64/cpa-usage-keeper"},
-		{"4", "amd64", "cpa-updater_linux_amd64", ""},
-		{"4", "arm64", "cpa-updater_linux_arm64", ""},
+		{"4", "amd64", "cpa-updater_linux_amd64.tar.gz", "cpa-updater"},
+		{"4", "arm64", "cpa-updater_linux_arm64.tar.gz", "cpa-updater"},
 	} {
 		svc, err := selectService(tc.choice)
 		if err != nil {
@@ -241,12 +241,19 @@ func TestExtractBinary(t *testing.T) {
 }
 
 func TestSelfUpdate(t *testing.T) {
-	for _, mode := range []string{"success", "download-failure", "checksum-failure", "cancel"} {
+	for _, mode := range []string{"success", "download-failure", "checksum-failure", "cancel", "wrong-member", "invalid-archive"} {
 		t.Run(mode, func(t *testing.T) {
 			svc := service{binary: "renamed-updater", repo: "owner/repo", dir: t.TempDir(), self: true}
 			target := filepath.Join(svc.dir, svc.binary)
 			mustWrite(t, target, []byte("old binary"))
 			name, _ := svc.archive("v1.0.0", runtime.GOARCH)
+			archive := archiveBytes(t, "cpa-updater", tar.TypeReg)
+			if mode == "wrong-member" {
+				archive = archiveBytes(t, "unexpected-name", tar.TypeReg)
+			}
+			if mode == "invalid-archive" {
+				archive = []byte("invalid archive")
+			}
 			rel := release{
 				Tag: "v1.0.0",
 				Assets: []releaseAsset{
@@ -260,9 +267,9 @@ func TestSelfUpdate(t *testing.T) {
 				var data []byte
 				switch url {
 				case "fixture:binary":
-					data = []byte("new binary")
+					data = archive
 				case "fixture:checksums":
-					data = fmt.Appendf(nil, "%x  %s\n", sha256.Sum256([]byte("new binary")), name)
+					data = fmt.Appendf(nil, "%x  %s\n", sha256.Sum256(archive), name)
 					if mode == "checksum-failure" {
 						data = []byte(strings.Repeat("0", 64) + "  " + name)
 					}

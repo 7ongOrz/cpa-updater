@@ -42,15 +42,26 @@ jobs:
           mkdir -p dist
           version="dev-${GITHUB_SHA:0:7}"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then version="$GITHUB_REF_NAME"; fi
-          go build -trimpath -ldflags="-s -w -X main.version=${version} -X main.updaterRepo=${GITHUB_REPOSITORY}" -o "dist/cpa-updater_linux_${GOARCH}" ./cmd/cpa-updater
+          go build -trimpath -ldflags="-s -w -X main.version=${version} -X main.updaterRepo=${GITHUB_REPOSITORY}" -o dist/cpa-updater ./cmd/cpa-updater
+      - name: Package and verify archive
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          archive="dist/cpa-updater_linux_${ARCH}.tar.gz"
+          tar -czf "$archive" -C dist cpa-updater
+          test "$(tar -tzf "$archive")" = cpa-updater
+          mkdir -p dist/unpacked
+          tar -xzf "$archive" -C dist/unpacked
+          cmp dist/cpa-updater dist/unpacked/cpa-updater
+          test -x dist/unpacked/cpa-updater
       - name: Command-line integration tests
         env:
-          CPA_UPDATER_BINARY: ${{ github.workspace }}/dist/cpa-updater_linux_${{ matrix.arch }}
+          CPA_UPDATER_BINARY: ${{ github.workspace }}/dist/unpacked/cpa-updater
         run: go test ./tests -count=1 -timeout=3m
       - uses: actions/upload-artifact@v7
         with:
           name: binary-${{ matrix.arch }}
-          path: dist/*
+          path: dist/*.tar.gz
           retention-days: 7
 
   release:
@@ -72,5 +83,5 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           cd dist
-          sha256sum cpa-updater_linux_* > checksums.txt
-          gh release create "$GITHUB_REF_NAME" cpa-updater_linux_* checksums.txt --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          sha256sum cpa-updater_linux_*.tar.gz > checksums.txt
+          gh release create "$GITHUB_REF_NAME" cpa-updater_linux_*.tar.gz checksums.txt --verify-tag --title "$GITHUB_REF_NAME" --generate-notes

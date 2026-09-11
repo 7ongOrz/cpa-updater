@@ -1,8 +1,10 @@
 package tests
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -43,6 +45,26 @@ func command(t *testing.T, binary string, args ...string) *exec.Cmd {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	t.Cleanup(cancel)
 	return exec.CommandContext(ctx, binary, args...)
+}
+
+func packageBinary(t *testing.T, data []byte) []byte {
+	t.Helper()
+	var buffer bytes.Buffer
+	gz := gzip.NewWriter(&buffer)
+	tw := tar.NewWriter(gz)
+	if err := tw.WriteHeader(&tar.Header{Name: "cpa-updater", Mode: 0755, Size: int64(len(data)), Typeflag: tar.TypeReg}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write(data); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buffer.Bytes()
 }
 
 func TestCLI(t *testing.T) {
@@ -88,8 +110,9 @@ func selfFixture(t *testing.T) (string, []byte, []byte, []string) {
 	target := filepath.Join(install, "my-updater")
 	write(t, target, old, 0755)
 	next := append(bytes.Clone(old), []byte("\nfixture release\n")...)
-	write(t, filepath.Join(root, "new-binary"), next, 0600)
-	asset := "cpa-updater_linux_" + runtime.GOARCH
+	archive := packageBinary(t, next)
+	write(t, filepath.Join(root, "package.tar.gz"), archive, 0600)
+	asset := "cpa-updater_linux_" + runtime.GOARCH + ".tar.gz"
 	manifest, err := json.Marshal(map[string]any{
 		"tag_name": "v999.0.0",
 		"assets": []map[string]string{
@@ -101,7 +124,7 @@ func selfFixture(t *testing.T) (string, []byte, []byte, []string) {
 		t.Fatal(err)
 	}
 	write(t, filepath.Join(root, "manifest"), manifest, 0600)
-	write(t, filepath.Join(root, "checksums"), fmt.Appendf(nil, "%x  %s\n", sha256.Sum256(next), asset), 0600)
+	write(t, filepath.Join(root, "checksums"), fmt.Appendf(nil, "%x  %s\n", sha256.Sum256(archive), asset), 0600)
 	if err := syscall.Mkfifo(filepath.Join(root, "pause"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +143,7 @@ done
 case "$url" in
   */releases/latest) cat "$FIXTURE/manifest" ;;
   */binary)
-    cp "$FIXTURE/new-binary" "$dest"
+    cp "$FIXTURE/package.tar.gz" "$dest"
     if [ "${PAUSE_DOWNLOAD:-0}" = 1 ]; then
       printf 'download-ready\n'
       read -r ignored < "$FIXTURE/pause"
