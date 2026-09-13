@@ -32,10 +32,10 @@ func selectService(choice string) (service, error) {
 	switch choice {
 	case "1", "cli-proxy-api":
 		return service{binary: "cli-proxy-api", repo: "7ongOrz/CLIProxyAPI", dir: "/etc/cli-proxy-api"}, nil
-	case "2", "official-cpa":
-		return service{binary: "cli-proxy-api", repo: "router-for-me/CLIProxyAPI", dir: "/etc/cli-proxy-api"}, nil
-	case "3", "cpa-usage-keeper":
+	case "2", "cpa-usage-keeper":
 		return service{binary: "cpa-usage-keeper", repo: "Willxup/cpa-usage-keeper", dir: "/etc/cpa-usage-keeper"}, nil
+	case "3", "official-cpa":
+		return service{binary: "cli-proxy-api", repo: "router-for-me/CLIProxyAPI", dir: "/etc/cli-proxy-api"}, nil
 	case "4", "self":
 		path, err := os.Executable()
 		if err != nil {

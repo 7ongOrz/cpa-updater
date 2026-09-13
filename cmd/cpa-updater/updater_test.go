@@ -94,14 +94,28 @@ func fixture(t *testing.T, choice string) (service, release, downloadFunc) {
 	}
 }
 
+func TestMenuServiceMapping(t *testing.T) {
+	for _, tc := range []struct{ choice, name string }{
+		{"1", "cli-proxy-api"},
+		{"2", "cpa-usage-keeper"},
+		{"3", "official-cpa"},
+	} {
+		got, err := selectService(tc.choice)
+		want, errName := selectService(tc.name)
+		if err != nil || errName != nil || got != want {
+			t.Fatalf("choice %s = %+v (%v), want %s = %+v (%v)", tc.choice, got, err, tc.name, want, errName)
+		}
+	}
+}
+
 func TestArchiveLayout(t *testing.T) {
 	for _, tc := range []struct{ choice, arch, name, member string }{
 		{"1", "amd64", "CLIProxyAPI_7.2.158-7ong.1_linux_amd64.tar.gz", "cli-proxy-api"},
 		{"1", "arm64", "CLIProxyAPI_7.2.158-7ong.1_linux_aarch64.tar.gz", "cli-proxy-api"},
-		{"2", "amd64", "CLIProxyAPI_7.2.158-7ong.1_linux_amd64.tar.gz", "cli-proxy-api"},
-		{"2", "arm64", "CLIProxyAPI_7.2.158-7ong.1_linux_aarch64.tar.gz", "cli-proxy-api"},
-		{"3", "amd64", "cpa-usage-keeper_v7.2.158-7ong.1_linux_amd64.tar.gz", "cpa-usage-keeper_v7.2.158-7ong.1_linux_amd64/cpa-usage-keeper"},
-		{"3", "arm64", "cpa-usage-keeper_v7.2.158-7ong.1_linux_arm64.tar.gz", "cpa-usage-keeper_v7.2.158-7ong.1_linux_arm64/cpa-usage-keeper"},
+		{"2", "amd64", "cpa-usage-keeper_v7.2.158-7ong.1_linux_amd64.tar.gz", "cpa-usage-keeper_v7.2.158-7ong.1_linux_amd64/cpa-usage-keeper"},
+		{"2", "arm64", "cpa-usage-keeper_v7.2.158-7ong.1_linux_arm64.tar.gz", "cpa-usage-keeper_v7.2.158-7ong.1_linux_arm64/cpa-usage-keeper"},
+		{"3", "amd64", "CLIProxyAPI_7.2.158-7ong.1_linux_amd64.tar.gz", "cli-proxy-api"},
+		{"3", "arm64", "CLIProxyAPI_7.2.158-7ong.1_linux_aarch64.tar.gz", "cli-proxy-api"},
 		{"4", "amd64", "cpa-updater_linux_amd64.tar.gz", "cpa-updater"},
 		{"4", "arm64", "cpa-updater_linux_arm64.tar.gz", "cpa-updater"},
 	} {

@@ -74,7 +74,7 @@ func TestCLI(t *testing.T) {
 	}{
 		{"--version", "", "cpa-updater", false},
 		{"--help", "", "official-cpa", false},
-		{"", "0\n", "更新 updater 自身", false},
+		{"", "0\n", "1. 更新自维护 CPA\n2. 更新 CPA Usage Keeper\n3. 更新官方 CPA\n4. 更新 updater 自身", false},
 		{"", "5\n0\n", "请选择服务", false},
 		{"", "6\n0\n", "请选择服务", false},
 		{"unknown", "", "请选择", true},
